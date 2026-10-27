@@ -27,9 +27,12 @@ import static org.mockito.Mockito.*;
 class TransferServiceUnitTest {
 
     // TODO 0-1: @Mock을 사용하여 AccountRepository의 Mock 객체를 생성하세요.
+    @Mock
+    AccountRepository accountRepository;
 
     // TODO 0-2: @InjectMocks를 사용하여 TransferService에 Mock Repository를 주입하세요.
-
+    @InjectMocks
+    TransferService transferService;
 
     // =====================================================
     // [실습 1-1] 정상 이체 플로우
@@ -50,21 +53,30 @@ class TransferServiceUnitTest {
 
         // Given
         // TODO 1-1: 발신인과 수취인 Account 객체를 생성하세요.
+        Account sender = new Account(1L, "John", new BigDecimal("1000"));
+        Account receiver = new Account(2L, "Jane", new BigDecimal("1000"));
 
         // TODO 1-2: given().willReturn()을 사용하여
         //  각 계좌 ID로 조회했을 때 해당 객체가 반환되도록 Mock Repository의 동작을 설정하세요.
-
+        given(accountRepository.findById(1L)).willReturn(Optional.of(sender));
+        given(accountRepository.findById(2L)).willReturn(Optional.of(receiver));
 
         // When
         // TODO 1-3: transferMoney()를 호출하여 1번 계좌에서 2번 계좌로 100원을 이체하세요.
-
+        transferService.transferMoney(1L, 2L, new BigDecimal("100"));
 
         // Then
         // TODO 1-4: assertThat()으로 두 계좌의 변경된 잔액이 예상 결과와 일치하는지 검증하세요.
+        assertThat(sender.getAmount())
+                .isEqualByComparingTo("900");
+
+        assertThat(receiver.getAmount())
+                .isEqualByComparingTo("1100");
 
         // TODO 1-5: verify()를 사용하여 findById(1L), findById(2L)가 각각 한 번씩 호출되었는지 검증하세요.
+        verify(accountRepository).findById(1L);
+        verify(accountRepository).findById(2L);
 
-        fail("TODO: 정상 이체 테스트를 완성하세요.");
     }
 
 
@@ -88,17 +100,30 @@ class TransferServiceUnitTest {
 
         // Given
         // TODO 2-1: findById(999L)이 호출되면 Optional.empty()를 반환하도록 설정하세요.
-
+        given(accountRepository.findById(999L)).willReturn(Optional.empty());
 
         // When & Then
         // TODO 2-2: assertThatThrownBy()로 transferMoney()를 실행하고
         //  AccountNotFoundException 발생 여부를 검증하세요.
+        assertThatThrownBy(() ->
+                transferService.transferMoney(999L, 2L, new BigDecimal("100")
+                )
+        )
+                .isInstanceOf(AccountNotFoundException.class)
+                .hasMessageContaining("Sender");
+
+        verify(accountRepository, never()).findById(2L);
 
         // TODO 2-3: 예외 메시지에 "Sender"가 포함되어 있는지 검증하세요.
+        assertThatThrownBy(() ->
+                transferService.transferMoney(999L, 2L, new BigDecimal("100")
+                ))
+                .isInstanceOf(AccountNotFoundException.class)
+                .hasMessageContaining("Sender");
 
         // TODO 2-4: verify()와 never()를 사용하여 findById(2L)이 호출되지 않았음을 검증하세요.
+        verify(accountRepository, never()).findById(2L);
 
-        fail("TODO: 발신인 없음 테스트를 완성하세요.");
     }
 
 
@@ -122,18 +147,27 @@ class TransferServiceUnitTest {
 
         // Given
         // TODO 3-1: 잔액이 1000원인 발신인 객체를 생성하세요.
+        Account sender = new Account(1L, "John", new BigDecimal("1000"));
 
         // TODO 3-2: 발신인 계좌 조회는 성공하고 수취인 계좌 조회는 실패하도록 Mock을 설정하세요.
-
+        given(accountRepository.findById(1L)).willReturn(Optional.of(sender));
+        given(accountRepository.findById(999L)).willReturn(Optional.empty());
 
         // When & Then
         // TODO 3-3: 수취인 계좌가 존재하지 않는 상황에서 transferMoney()를 실행하고 예외를 검증하세요.
-
         // TODO 3-4: 예외 메시지에 "Receiver"가 포함되어 있는지 검증하세요.
+        assertThatThrownBy(() ->
+                transferService.transferMoney(1L, 999L, new BigDecimal("100")
+                )
+        )
+                .isInstanceOf(AccountNotFoundException.class)
+                .hasMessageContaining("Receiver");
+
+
 
         // TODO 3-5: 이체 실패 후 발신인 잔액이 1000원으로 유지되었는지 검증하세요.
-
-        fail("TODO: 수취인 없음 테스트를 완성하세요.");
+        assertThat(sender.getAmount())
+                .isEqualByComparingTo("1000");
     }
 
 
@@ -158,8 +192,8 @@ class TransferServiceUnitTest {
         // Given
         // TODO 4-1: 발신인과 수취인 계좌를 생성하세요.
 
-        // TODO 4-2: 두 계좌를 정상적으로 조회할 수 있도록 Mock Repository의 동작을 설정하세요.
 
+        // TODO 4-2: 두 계좌를 정상적으로 조회할 수 있도록 Mock Repository의 동작을 설정하세요.
 
         // When & Then
         // TODO 4-3: 잔액보다 큰 금액을 이체하도록 transferMoney()를 호출하고 예외를 검증하세요.
