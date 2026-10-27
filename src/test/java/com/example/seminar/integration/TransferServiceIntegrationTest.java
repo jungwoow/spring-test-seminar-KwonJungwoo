@@ -22,9 +22,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 class TransferServiceIntegrationTest {
 
     // TODO 0-1: @Autowired를 사용하여 실제 TransferService Bean을 주입받으세요.
+    @Autowired
+    TransferService transferService;
 
     // TODO 0-2: @Autowired를 사용하여 실제 AccountRepository Bean을 주입받으세요.
-
+    @Autowired
+    AccountRepository accountRepository;
 
     // =====================================================
     // 테스트 데이터 정리
@@ -34,6 +37,7 @@ class TransferServiceIntegrationTest {
     void cleanup() {
 
         // TODO 0-3: 각 테스트가 끝나면 Repository에 저장된 계좌 데이터를 삭제하세요.
+        accountRepository.deleteAll();
     }
 
 
@@ -56,22 +60,37 @@ class TransferServiceIntegrationTest {
 
         // Given
         // TODO 1-1: Account 객체 2개를 생성하고 accountRepository.save()로 H2 DB에 저장하세요.
+        Account sender = accountRepository.save(
+                new Account("John", new BigDecimal("1000")));
 
         // TODO 1-2: 저장된 계좌의 ID를 확인하세요. (JPA가 ID를 자동 생성)
-
+        Account receiver = accountRepository.save(
+                new Account("Jane", new BigDecimal("1000"))
+        );
 
         // When
         // TODO 1-3: 저장된 계좌 ID를 사용하여 100원을 이체하는 transferMoney()를 호출하세요.
-
+        transferService.transferMoney(
+                sender.getId(),
+                receiver.getId(),
+                new BigDecimal("100")
+        );
 
         // Then
         // TODO 1-4: findById()로 두 계좌를 실제 DB에서 다시 조회하세요.
+        Account updatedSender = accountRepository
+                .findById(sender.getId())
+                .orElseThrow();
+
+        Account updatedReceiver = accountRepository
+                .findById(receiver.getId())
+                        .orElseThrow();
 
         // TODO 1-5: assertThat()으로 발신인 잔액이 900원인지 검증하세요.
+        assertThat(updatedSender.getAmount()).isEqualByComparingTo("900");
 
         // TODO 1-6: 수취인 잔액이 1100원인지 검증하세요.
-
-        fail("TODO: 정상 이체 통합 테스트를 완성하세요.");
+        assertThat(updatedReceiver.getAmount()).isEqualByComparingTo("1100");
     }
 
 
@@ -94,14 +113,17 @@ class TransferServiceIntegrationTest {
 
         // Given
         // TODO 2-1: 테스트에 사용할 H2 DB에 ID 999인 계좌가 존재하지 않는지 확인하세요.
-
+        assertThat(accountRepository.existsById(999L))
+            .isFalse();
 
         // When & Then
         // TODO 2-2: 존재하지 않는 발신인 ID로 transferMoney()를 호출하세요.
-
         // TODO 2-3: AccountNotFoundException 발생 여부와 예외 메시지에 "Sender"가 포함되었는지 검증하세요.
+        assertThatThrownBy(() -> transferService.transferMoney(
+                999L, 2L, new BigDecimal("100")
+        )).isInstanceOf(AccountNotFoundException.class)
+                .hasMessageContaining("Sender");
 
-        fail("TODO: 발신인 없음 통합 테스트를 완성하세요.");
     }
 
 
